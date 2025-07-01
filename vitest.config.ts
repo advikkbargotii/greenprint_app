@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
-import { resolve } from 'path'
+import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
@@ -18,21 +18,15 @@ export default defineConfig({
       '.next',
       'coverage'
     ],
-    coverage: {
-      reporter: ['text', 'json', 'html'],
-      exclude: [
-        'node_modules/',
-        'src/test/',
-        '**/*.d.ts',
-        '**/*.config.*',
-        'src/middleware.ts',
-        'src/app/layout.tsx'
-      ]
-    }
+    // Removed coverage config that might cause issues in CI
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, './src'),
+      '@': path.resolve(__dirname, './src'),
     },
+  },
+  // Add specific settings for CI compatibility
+  define: {
+    global: 'globalThis',
   },
 })
