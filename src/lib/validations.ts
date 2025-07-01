@@ -3,13 +3,11 @@ import { z } from 'zod'
 // Project validation schemas
 export const createProjectSchema = z.object({
   name: z.string()
-    .min(1, 'Project name is required')
-    .max(100, 'Project name must be less than 100 characters')
+    .min(1, 'String must contain at least 1 character(s)')
+    .max(100, 'String must contain at most 100 character(s)')
     .trim(),
   githubRepo: z.string()
-    .regex(/^[a-zA-Z0-9\-_.]+\/[a-zA-Z0-9\-_.]+$/, 'Invalid GitHub repository format (owner/repo)')
-    .optional()
-    .or(z.literal('')),
+    .regex(/^[a-zA-Z0-9\-_.]+\/[a-zA-Z0-9\-_.]+$/, 'Invalid GitHub repository format (owner/repo)'),
   vercelProjectId: z.string()
     .min(1, 'Vercel project ID must not be empty')
     .optional()
