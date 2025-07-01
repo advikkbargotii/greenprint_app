@@ -14,6 +14,7 @@ function useApiData<T>(
   const [error, setError] = useState<string | null>(null)
 
   // Memoize the fetch function to prevent unnecessary re-renders
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const memoizedFetchFn = useCallback(fetchFn, dependencies)
 
   const fetchData = useCallback(async () => {
