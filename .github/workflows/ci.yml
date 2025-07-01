@@ -76,8 +76,10 @@ jobs:
             echo "Build failed: .next directory does not exist!"
             exit 1
           fi
-          echo "Checking .next directory:"
-          ls -la .next/
+          if [ -z "$(ls -A .next)" ]; then
+            echo "Build failed: .next directory is empty!"
+            exit 1
+          fi
           echo "Build verification complete - .next directory exists with content"
 
       - name: Upload build artifacts
