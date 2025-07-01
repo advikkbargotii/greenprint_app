@@ -65,17 +65,21 @@ jobs:
       - name: Build application
         run: npm run build
         env:
-          # Mock environment variables for build
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY || 'pk_test_mock' }}
-          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY || 'sk_test_mock' }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://mock.supabase.co' }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'mock_anon_key' }}
+          # Use mock environment variables for build
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_mock'
+          CLERK_SECRET_KEY: 'sk_test_mock'
+          NEXT_PUBLIC_SUPABASE_URL: 'https://mock.supabase.co'
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: 'mock_anon_key'
 
       - name: Verify build artifacts exist
         run: |
+          if [ ! -d ".next" ]; then
+            echo "Build failed: .next directory does not exist!"
+            exit 1
+          fi
           echo "Checking .next directory:"
           ls -la .next/
-          echo "Build verification complete"
+          echo "Build verification complete - .next directory exists with content"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
