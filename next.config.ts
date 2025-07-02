@@ -1,11 +1,5 @@
 import type { NextConfig } from "next";
 
-// Bundle analyzer configuration
-const withBundleAnalyzer = require('@next/bundle-analyzer')({
-  enabled: process.env.ANALYZE === 'true',
-  openAnalyzer: false,
-});
-
 const nextConfig: NextConfig = {
   // Performance optimizations
   experimental: {
@@ -25,4 +19,18 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
 };
 
-export default withBundleAnalyzer(nextConfig);
+// Conditionally apply bundle analyzer only when explicitly requested
+if (process.env.ANALYZE === 'true') {
+  try {
+    const withBundleAnalyzer = require('@next/bundle-analyzer')({
+      enabled: true,
+      openAnalyzer: false,
+    });
+    module.exports = withBundleAnalyzer(nextConfig);
+  } catch (error) {
+    console.warn('Bundle analyzer not available, using basic config');
+    module.exports = nextConfig;
+  }
+} else {
+  module.exports = nextConfig;
+}
