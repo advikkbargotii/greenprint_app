@@ -13,7 +13,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [18.x, 20.x, 23.x]
 
     steps:
       - name: Checkout code
@@ -25,6 +25,13 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
 
+      - name: Show environment info
+        run: |
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+          echo "OS: ${{ runner.os }}"
+          echo "Matrix Node: ${{ matrix.node-version }}"
+          
       - name: Install dependencies
         run: npm ci
 
@@ -43,6 +50,29 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run security audit
+        run: npm audit --audit-level moderate
+
+      - name: Run dependency check
+        run: npx --yes license-checker --summary
 
   build:
     name: Build Application
@@ -72,51 +102,35 @@ jobs:
 
       - name: Verify build artifacts exist
         run: |
+          echo "Checking build output..."
           if [ ! -d ".next" ]; then
-            echo "Build failed: .next directory does not exist!"
+            echo "❌ Build failed: .next directory does not exist!"
             exit 1
           fi
-          if [ -z "$(ls -A .next)" ]; then
-            echo "Build failed: .next directory is empty!"
+          if [ -z "$(ls -A .next 2>/dev/null)" ]; then
+            echo "❌ Build failed: .next directory is empty!"
             exit 1
           fi
-          echo "Build verification complete - .next directory exists with content"
+          echo "✅ Build verification complete - .next directory exists with content"
+          echo "📁 Contents of .next directory:"
+          ls -la .next/ | head -10
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
+        if: success()
         with:
-          name: build-files
-          path: .next/
+          name: build-files-${{ github.run_id }}
+          path: |
+            .next/
+            !.next/cache/
           retention-days: 7
-
-  security:
-    name: Security Audit
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20.x'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run security audit
-        run: npm audit --audit-level moderate
-
-      - name: Run dependency check
-        run: npx --yes license-checker --summary
+          if-no-files-found: error
 
   performance:
     name: Performance Analysis
     runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'pull_request'
+    needs: [test, build]
+    if: github.event_name == 'pull_request' && needs.build.result == 'success'
 
     steps:
       - name: Checkout code
@@ -134,110 +148,290 @@ jobs:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: build-files
-          path: .next/
+          name: build-files-${{ github.run_id }}
+          path: ./
+
+      - name: Verify downloaded artifacts
+        run: |
+          echo "🔍 Verifying downloaded build artifacts..."
+          if [ ! -d ".next" ]; then
+            echo "❌ Downloaded artifacts missing: .next directory does not exist!"
+            echo "📁 Current directory contents:"
+            ls -la
+            exit 1
+          fi
+          echo "✅ Downloaded artifacts verified"
+          echo "📁 .next directory contents:"
+          ls -la .next/ | head -10
+
+      - name: Check for bundle analyzer
+        id: check_analyzer
+        run: |
+          if npm run analyze --help &>/dev/null; then
+            echo "analyzer_available=true" >> $GITHUB_OUTPUT
+          else
+            echo "analyzer_available=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Bundle analyzer script not found in package.json"
+          fi
 
       - name: Analyze bundle size
-        run: |
-          echo "Analyzing bundle size..."
-          du -sh .next/static/ || echo "No static directory found"
-          ls -la .next/ || echo "No .next directory found"
-          find .next -name "*.js" -exec du -h {} + | sort -hr | head -10 || echo "No JS files found"
-        
-      - name: Comment performance info
-        uses: actions/github-script@v7
-        if: github.event_name == 'pull_request'
-        with:
-          script: |
-            const fs = require('fs');
-            const { execSync } = require('child_process');
-            
-            try {
-              // Get bundle size info from .next directory
-              const staticSize = execSync('du -sh .next/static/ 2>/dev/null || echo "0B"').toString().trim();
-              const totalSize = execSync('du -sh .next/ 2>/dev/null || echo "0B"').toString().trim();
-              
-              const comment = `
-              ## 📊 Performance Analysis
-              
-              **Build metrics for this PR:**
-              
-              - **Static Assets Size**: ${staticSize.split('\t')[0]}
-              - **Total Build Size**: ${totalSize.split('\t')[0]}
-              - **Build Status**: ✅ Successful
-              
-              > 🔍 Build artifacts are available and verified
-              `;
-              
-              github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: comment
-              });
-            } catch (error) {
-              console.log('Performance analysis failed:', error.message);
-              
-              const fallbackComment = `
-              ## 📊 Performance Analysis
-              
-              ⚠️ Unable to generate detailed performance metrics, but build completed successfully.
-              
-              Build artifacts are available for download.
-              `;
-              
-              github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: fallbackComment
-              });
-            }
-
-  accessibility:
-    name: Accessibility Testing
-    runs-on: ubuntu-latest
-    needs: build
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20.x'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: build-files
-          path: .next/
-
-      - name: Install Pa11y for accessibility testing
-        run: npm install -g pa11y
-
-      - name: Start application
-        run: npm start &
+        if: steps.check_analyzer.outputs.analyzer_available == 'true'
+        run: npm run analyze
         env:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_mock'
           CLERK_SECRET_KEY: 'sk_test_mock'
           NEXT_PUBLIC_SUPABASE_URL: 'https://mock.supabase.co'
           NEXT_PUBLIC_SUPABASE_ANON_KEY: 'mock_anon_key'
 
-      - name: Wait for application
-        run: npx wait-on http://localhost:3000
+      - name: Calculate bundle sizes
+        id: bundle_info
+        run: |
+          echo "📊 Calculating bundle sizes..."
+          
+          # Basic size calculation
+          if [ -d ".next/static" ]; then
+            STATIC_SIZE=$(du -sb .next/static 2>/dev/null | cut -f1 || echo "0")
+          else
+            STATIC_SIZE=0
+          fi
+          
+          if [ -f ".next/BUILD_ID" ]; then
+            BUILD_ID=$(cat .next/BUILD_ID)
+          else
+            BUILD_ID="unknown"
+          fi
+          
+          echo "static_size=$STATIC_SIZE" >> $GITHUB_OUTPUT
+          echo "build_id=$BUILD_ID" >> $GITHUB_OUTPUT
+          
+          echo "📈 Bundle Information:"
+          echo "  - Static files size: $(($STATIC_SIZE / 1024)) KB"
+          echo "  - Build ID: $BUILD_ID"
+
+      - name: Comment bundle size
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            let comment = `## 📊 Bundle Analysis Report\n\n`;
+            comment += `**Build Information:**\n`;
+            comment += `- Build ID: \`${{ steps.bundle_info.outputs.build_id }}\`\n`;
+            comment += `- Static files size: ~${{ steps.bundle_info.outputs.static_size }} bytes\n\n`;
+            
+            // Check for bundle analyzer report
+            const analyzerPath = '.next/analyze/bundle-analyzer-report.json';
+            if (fs.existsSync(analyzerPath)) {
+              try {
+                const analysis = fs.readFileSync(analyzerPath, 'utf8');
+                const data = JSON.parse(analysis);
+                
+                comment += `**Detailed Analysis:**\n`;
+                comment += `- Total Bundle Size: ${(data.totalSize / 1024).toFixed(2)} KB\n`;
+                comment += `- First Load JS: ${(data.firstLoadJS / 1024).toFixed(2)} KB\n\n`;
+              } catch (error) {
+                comment += `⚠️ Bundle analyzer report found but could not be parsed\n\n`;
+              }
+            } else {
+              comment += `ℹ️ Detailed bundle analysis not available (analyzer script not configured)\n\n`;
+            }
+            
+            comment += `> 🔍 This analysis helps track bundle size changes in your PR`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  accessibility:
+    name: Accessibility Testing
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    if: needs.build.result == 'success'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-files-${{ github.run_id }}
+          path: ./
+
+      - name: Verify downloaded artifacts
+        run: |
+          echo "🔍 Verifying downloaded build artifacts..."
+          if [ ! -d ".next" ]; then
+            echo "❌ Downloaded artifacts missing: .next directory does not exist!"
+            echo "📁 Current directory contents:"
+            ls -la
+            exit 1
+          fi
+          echo "✅ Downloaded artifacts verified"
+
+      - name: Install accessibility testing tools
+        run: |
+          npm install -g pa11y wait-on
+          echo "✅ Installed pa11y and wait-on globally"
+
+      - name: Start application
+        run: |
+          echo "🚀 Starting Next.js application..."
+          npm start &
+          APP_PID=$!
+          echo "Started app with PID: $APP_PID"
+          echo $APP_PID > app.pid
+          echo "APP_PID=$APP_PID" >> $GITHUB_ENV
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_mock'
+          CLERK_SECRET_KEY: 'sk_test_mock'
+          NEXT_PUBLIC_SUPABASE_URL: 'https://mock.supabase.co'
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: 'mock_anon_key'
+          PORT: 3000
+
+      - name: Wait for application to be ready
+        run: |
+          echo "⏳ Waiting for application to start on http://localhost:3000..."
+          npx wait-on http://localhost:3000 --timeout 120000 --interval 2000
+          echo "✅ Application is ready!"
 
       - name: Run accessibility tests
         run: |
-          pa11y http://localhost:3000 --reporter json > accessibility-report.json || true
+          echo "♿ Running accessibility tests..."
+          pa11y http://localhost:3000 \
+            --reporter json \
+            --standard WCAG2AA \
+            --timeout 10000 \
+            --wait 2000 > accessibility-report.json || {
+              echo "⚠️ Accessibility tests completed with issues"
+              exit 0
+            }
+          echo "✅ Accessibility tests completed"
+
+      - name: Process accessibility results
+        run: |
+          echo "📋 Processing accessibility test results..."
+          if [ -f accessibility-report.json ]; then
+            ISSUE_COUNT=$(jq '. | length' accessibility-report.json 2>/dev/null || echo "unknown")
+            echo "Found $ISSUE_COUNT accessibility issues"
+            echo "ACCESSIBILITY_ISSUES=$ISSUE_COUNT" >> $GITHUB_ENV
+            
+            if [ "$ISSUE_COUNT" != "0" ] && [ "$ISSUE_COUNT" != "unknown" ]; then
+              echo "⚠️ Accessibility issues found:"
+              jq -r '.[] | "  - \(.message) (Code: \(.code))"' accessibility-report.json | head -10
+            fi
+          else
+            echo "❌ Accessibility report not generated"
+            echo "ACCESSIBILITY_ISSUES=unknown" >> $GITHUB_ENV
+          fi
+
+      - name: Stop application
+        if: always()
+        run: |
+          echo "🛑 Stopping application..."
+          if [ -f app.pid ]; then
+            kill $(cat app.pid) 2>/dev/null || true
+            rm app.pid
+          fi
+          # Also kill any remaining node processes
+          pkill -f "npm start" 2>/dev/null || true
+          pkill -f "next start" 2>/dev/null || true
+          echo "✅ Application stopped"
 
       - name: Upload accessibility report
         uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: accessibility-report
+          name: accessibility-report-${{ github.run_id }}
           path: accessibility-report.json
+          retention-days: 30
+
+      - name: Comment accessibility results
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request' && always()
+        with:
+          script: |
+            const fs = require('fs');
+            
+            let comment = `## ♿ Accessibility Test Results\n\n`;
+            
+            if (fs.existsSync('accessibility-report.json')) {
+              try {
+                const report = fs.readFileSync('accessibility-report.json', 'utf8');
+                const issues = JSON.parse(report);
+                
+                if (issues.length === 0) {
+                  comment += `✅ **No accessibility issues found!**\n\n`;
+                  comment += `Your application passed all WCAG 2.1 AA accessibility tests.`;
+                } else {
+                  comment += `⚠️ **Found ${issues.length} accessibility issue(s)**\n\n`;
+                  comment += `**Summary of issues:**\n`;
+                  
+                  const summary = {};
+                  issues.forEach(issue => {
+                    const code = issue.code || 'unknown';
+                    summary[code] = (summary[code] || 0) + 1;
+                  });
+                  
+                  Object.entries(summary).forEach(([code, count]) => {
+                    comment += `- \`${code}\`: ${count} occurrence(s)\n`;
+                  });
+                  
+                  comment += `\n📄 Full accessibility report available in build artifacts.`;
+                }
+              } catch (error) {
+                comment += `❌ **Error processing accessibility results**\n\n`;
+                comment += `Could not parse accessibility report. Check the build logs for details.`;
+              }
+            } else {
+              comment += `❌ **Accessibility tests could not be completed**\n\n`;
+              comment += `No accessibility report was generated. Check the build logs for details.`;
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  # Summary job that depends on all others
+  ci-summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [test, security, build, performance, accessibility]
+    if: always()
+    
+    steps:
+      - name: Check all job results
+        run: |
+          echo "📊 CI/CD Pipeline Summary:"
+          echo "========================="
+          echo "Test: ${{ needs.test.result }}"
+          echo "Security: ${{ needs.security.result }}"
+          echo "Build: ${{ needs.build.result }}"
+          echo "Performance: ${{ needs.performance.result }}"
+          echo "Accessibility: ${{ needs.accessibility.result }}"
+          echo "========================="
+          
+          # Fail if critical jobs failed
+          if [[ "${{ needs.test.result }}" == "failure" || "${{ needs.build.result }}" == "failure" ]]; then
+            echo "❌ Critical jobs failed"
+            exit 1
+          fi
+          
+          echo "✅ Pipeline completed successfully"
