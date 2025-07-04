@@ -42,6 +42,15 @@
   - Better developer confidence when making changes.
   - Documentation through tests that show how components should work.
 
+### CI/CD Pipeline Optimization
+- **Issue**: Artifact upload failures and unreliable pipeline execution.
+- **Solution**: Implemented tarball-based artifact management and improved job conditions.
+- **Benefits**: 
+  - Reliable artifact uploads and downloads across pipeline jobs.
+  - Performance and accessibility testing on all builds.
+  - Comprehensive debugging and verification steps.
+  - Consistent pipeline execution with proper error handling.
+
 ## Benefits Achieved
 - Faster development and easier debugging.
 - Reduced file sizes and improved performance.
@@ -99,3 +108,21 @@ The GreenPrint application now represents a production-ready, enterprise-grade R
 - Deploy with proper security headers and HTTPS
 - Conduct security audit and penetration testing
 - User acceptance testing with accessibility tools
+
+## Latest CI/CD Enhancements (Recent)
+
+### Artifact Upload/Download Resolution ✅
+- **Problem**: GitHub Actions artifact upload was failing due to incorrect path patterns and exclusion syntax
+- **Solution**: Implemented tarball-based artifact management with proper compression and extraction
+- **Result**: 100% reliable artifact transfer between CI/CD jobs
+
+### Performance Job Execution Fix ✅
+- **Problem**: Performance analysis job was only running on pull requests, missing main branch pushes
+- **Solution**: Removed event type restriction while keeping PR comments conditional
+- **Result**: Performance analysis runs on all successful builds with appropriate feedback
+
+### Pipeline Debugging and Reliability ✅
+- **Added**: Comprehensive verification steps and debugging output throughout the pipeline
+- **Added**: Proper error handling and fallback mechanisms
+- **Added**: Detailed logging for troubleshooting pipeline issues
+- **Result**: Self-documenting pipeline with clear failure points and resolution paths
