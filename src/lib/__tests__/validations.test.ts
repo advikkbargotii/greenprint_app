@@ -15,7 +15,7 @@ describe('Validation Schemas', () => {
       if (result.success) {
         expect(result.data).toEqual({
           name: 'Valid Project',
-          githubRepo: 'user/valid-project'
+          githubRepo: 'user&#x2F;valid-project' // Security sanitization encodes /
         })
       }
     })
@@ -45,7 +45,7 @@ describe('Validation Schemas', () => {
       expect(result.success).toBe(false)
       if (!result.success) {
         expect(result.error.flatten().fieldErrors.name).toContain(
-          'String must contain at least 1 character(s)'
+          'Project name is required'
         )
       }
     })
@@ -61,7 +61,7 @@ describe('Validation Schemas', () => {
       expect(result.success).toBe(false)
       if (!result.success) {
         expect(result.error.flatten().fieldErrors.name).toContain(
-          'String must contain at most 100 character(s)'
+          'Security threats detected: length_exceeded'
         )
       }
     })

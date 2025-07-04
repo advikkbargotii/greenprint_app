@@ -1,28 +1,36 @@
 import { z } from 'zod'
-import { secureString, secureUrl } from './security'
+import { secureString } from './security'
 
 // Project validation schemas
 export const createProjectSchema = z.object({
-  name: secureString({ maxLength: 100 })
+  name: z.string()
+    .transform(val => val.trim())
+    .pipe(secureString({ maxLength: 100 }))
     .refine(val => val.length >= 1, 'Project name is required')
     .refine(val => val.length <= 100, 'Project name must be less than 100 characters'),
-  githubRepo: secureString({ maxLength: 255 })
-    .refine(val => /^[a-zA-Z0-9\-_.]+\/[a-zA-Z0-9\-_.]+$/.test(val), 'Invalid GitHub repository format (owner/repo)'),
-  vercelProjectId: secureString({ maxLength: 255 })
+  githubRepo: z.string()
+    .refine(val => /^[a-zA-Z0-9\-_.]+\/[a-zA-Z0-9\-_.]+$/.test(val), 'Invalid GitHub repository format (owner/repo)')
+    .pipe(secureString({ maxLength: 255 })),
+  vercelProjectId: z.string()
+    .pipe(secureString({ maxLength: 255 }))
     .optional()
     .or(z.literal(''))
 })
 
 export const updateProjectSchema = z.object({
-  name: secureString({ maxLength: 100 })
+  name: z.string()
+    .transform(val => val.trim())
+    .pipe(secureString({ maxLength: 100 }))
     .refine(val => val.length >= 1, 'Project name is required')
     .refine(val => val.length <= 100, 'Project name must be less than 100 characters')
     .optional(),
-  githubRepo: secureString({ maxLength: 255 })
+  githubRepo: z.string()
     .refine(val => /^[a-zA-Z0-9\-_.]+\/[a-zA-Z0-9\-_.]+$/.test(val), 'Invalid GitHub repository format (owner/repo)')
+    .pipe(secureString({ maxLength: 255 }))
     .optional()
     .or(z.literal('')),
-  vercelProjectId: secureString({ maxLength: 255 })
+  vercelProjectId: z.string()
+    .pipe(secureString({ maxLength: 255 }))
     .optional()
     .or(z.literal(''))
 })

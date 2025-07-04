@@ -11,14 +11,14 @@ interface ErrorContext {
   timestamp?: Date
   severity?: 'low' | 'medium' | 'high' | 'critical'
   tags?: Record<string, string>
-  extra?: Record<string, any>
+  extra?: Record<string, unknown>
 }
 
 interface PerformanceMetrics {
   name: string
   startTime: number
   duration: number
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 }
 
 interface SecurityEvent {
@@ -27,7 +27,7 @@ interface SecurityEvent {
   userId?: string
   ipAddress?: string
   userAgent?: string
-  details: Record<string, any>
+  details: Record<string, unknown>
 }
 
 class ErrorMonitor {
@@ -139,7 +139,7 @@ class ErrorMonitor {
   /**
    * Track user actions for analytics
    */
-  logUserAction(action: string, details: Record<string, any> = {}) {
+  logUserAction(action: string, details: Record<string, unknown> = {}) {
     const actionData = {
       action,
       details,
@@ -161,7 +161,7 @@ class ErrorMonitor {
   measurePerformance<T>(
     name: string,
     fn: () => T | Promise<T>,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ): T | Promise<T> {
     const startTime = performance.now()
 
@@ -268,7 +268,7 @@ class ErrorMonitor {
   /**
    * Send error to external monitoring service
    */
-  private sendToMonitoringService(errorData: any) {
+  private sendToMonitoringService(errorData: Record<string, unknown>) {
     // Implementation would integrate with Sentry, LogRocket, etc.
     // For now, we'll just log it
     if (this.isProduction) {
@@ -300,7 +300,7 @@ class ErrorMonitor {
   /**
    * Send analytics data
    */
-  private sendAnalytics(data: any) {
+  private sendAnalytics(data: Record<string, unknown>) {
     if (this.isProduction) {
       // Example: Send to analytics service
       console.log('Would send analytics:', data)
@@ -343,13 +343,13 @@ export const logAPIError = (
 export const measurePerformance = <T>(
   name: string,
   fn: () => T | Promise<T>,
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 ): T | Promise<T> => {
   return errorMonitor.measurePerformance(name, fn, metadata)
 }
 
 // User action tracking
-export const logUserAction = (action: string, details?: Record<string, any>) => {
+export const logUserAction = (action: string, details?: Record<string, unknown>) => {
   errorMonitor.logUserAction(action, details)
 }
 

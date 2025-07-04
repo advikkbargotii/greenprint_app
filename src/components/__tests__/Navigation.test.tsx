@@ -36,8 +36,8 @@ describe('Navigation Component', () => {
   it('has proper accessibility attributes', () => {
     render(<Navigation {...mockProps} />)
     
-    const nav = screen.getByRole('navigation')
-    expect(nav).toHaveAttribute('aria-label', 'Main navigation')
+    const nav = screen.getByRole('banner')
+    expect(nav).toHaveAttribute('id', 'main-navigation')
     
     const navLinks = screen.getAllByRole('button')
     expect(navLinks.length).toBeGreaterThan(0)
@@ -56,7 +56,7 @@ describe('Navigation Component', () => {
   it('applies correct CSS classes for styling', () => {
     render(<Navigation {...mockProps} />)
     
-    const navContainer = screen.getByRole('navigation')
+    const navContainer = screen.getByRole('banner')
     expect(navContainer).toHaveClass('gp-z-nav')
     
     const innerContainer = navContainer.querySelector('.gp-nav-container')

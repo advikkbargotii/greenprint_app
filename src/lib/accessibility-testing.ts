@@ -3,7 +3,7 @@
  * Only runs in development mode to help catch accessibility issues early
  */
 
-let axeCore: any = null
+let axeCore: typeof import('@axe-core/react').default | null = null
 
 // Lazy load axe-core only in development
 const loadAxe = async () => {
@@ -38,19 +38,7 @@ export const initAccessibilityTesting = async () => {
     const React = await import('react')
     const ReactDOM = await import('react-dom')
     
-    axe(React, ReactDOM, 1000, {
-      // Configure axe-core rules
-      rules: {
-        // Enable all rules
-        'color-contrast': { enabled: true },
-        'keyboard-navigation': { enabled: true },
-        'focus-management': { enabled: true },
-        'aria-attributes': { enabled: true },
-        'semantic-markup': { enabled: true },
-      },
-      // Tag filters
-      tags: ['wcag2a', 'wcag2aa', 'wcag21aa', 'best-practice'],
-    })
+    axe(React, ReactDOM, 1000)
   }
 }
 
@@ -66,20 +54,11 @@ export const auditAccessibility = async (element?: Element) => {
     // Use dynamic import to avoid bundling in production
     const { default: axe } = await import('axe-core')
     
-    const results = await axe.run(element || document.body, {
-      rules: {
-        'color-contrast': { enabled: true },
-        'keyboard-navigation': { enabled: true },
-        'focus-management': { enabled: true },
-        'aria-attributes': { enabled: true },
-        'semantic-markup': { enabled: true },
-      },
-      tags: ['wcag2a', 'wcag2aa', 'wcag21aa', 'best-practice'],
-    })
+    const results = await axe.run(element || document.body)
 
-    if (results.violations.length > 0) {
+    if (results.violations && results.violations.length > 0) {
       console.group('🔴 Accessibility Violations Found')
-      results.violations.forEach(violation => {
+      results.violations.forEach((violation: { id: string; description: string; nodes: unknown[]; helpUrl: string }) => {
         console.error(`${violation.id}: ${violation.description}`)
         console.error('Affected elements:', violation.nodes)
         console.error('Help:', violation.helpUrl)
@@ -87,7 +66,7 @@ export const auditAccessibility = async (element?: Element) => {
       console.groupEnd()
     }
 
-    if (results.passes.length > 0) {
+    if (results.passes && results.passes.length > 0) {
       console.group('✅ Accessibility Checks Passed')
       console.log(`${results.passes.length} accessibility rules passed`)
       console.groupEnd()
@@ -268,18 +247,21 @@ export const validateARIA = {
   }
 }
 
+// Create accessibility helpers object
+const accessibilityHelpers = {
+  audit: auditAccessibility,
+  checkColorContrast,
+  testKeyboardNavigation,
+  validateARIA
+}
+
 // Development-only accessibility checker
 if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
   // Initialize accessibility testing
   initAccessibilityTesting()
 
   // Add global accessibility debugging helpers
-  ;(window as any).a11y = {
-    audit: auditAccessibility,
-    checkColorContrast,
-    testKeyboardNavigation,
-    validateARIA
-  }
+  ;(window as typeof window & { a11y: typeof accessibilityHelpers }).a11y = accessibilityHelpers
 
   console.log('🔍 Accessibility testing enabled. Use window.a11y to run manual tests.')
 }

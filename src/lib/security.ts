@@ -25,7 +25,7 @@ export type SecurityEventType = 'sql_injection' | 'xss_attempt' | 'rate_limit_ex
 /**
  * Enhanced input sanitization
  */
-export class InputSanitizer {
+class InputSanitizer {
   private static readonly SQL_INJECTION_PATTERNS = [
     /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION|SCRIPT)\b)/gi,
     /('|(\\')|(;)|(\|)|(\*)|(%)|(<)|(>)|(\{)|(\}))/gi,
@@ -143,23 +143,23 @@ export class InputSanitizer {
   /**
    * Validate and sanitize object properties
    */
-  static sanitizeObject<T extends Record<string, any>>(
+  static sanitizeObject<T extends Record<string, unknown>>(
     obj: T,
     options: SanitizationOptions = {}
   ): { sanitized: T; threats: Record<string, string[]> } {
-    const sanitized = { ...obj }
+    const sanitized = { ...obj } as T
     const threats: Record<string, string[]> = {}
 
     for (const [key, value] of Object.entries(obj)) {
       if (typeof value === 'string') {
         const result = this.sanitize(value, options)
-        sanitized[key] = result.sanitized
+        ;(sanitized as Record<string, unknown>)[key] = result.sanitized
         if (result.threats.length > 0) {
           threats[key] = result.threats
         }
       } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-        const result = this.sanitizeObject(value, options)
-        sanitized[key] = result.sanitized
+        const result = this.sanitizeObject(value as Record<string, unknown>, options)
+        ;(sanitized as Record<string, unknown>)[key] = result.sanitized
         if (Object.keys(result.threats).length > 0) {
           threats[key] = Object.values(result.threats).flat()
         }
@@ -173,7 +173,7 @@ export class InputSanitizer {
 /**
  * Rate limiting utility
  */
-export class RateLimiter {
+class RateLimiter {
   private static requests = new Map<string, { count: number; resetTime: number }>()
 
   /**
@@ -307,7 +307,7 @@ export const secureUrl = z.string().url().transform((val, ctx) => {
 /**
  * CSRF token utilities
  */
-export class CSRFProtection {
+class CSRFProtection {
   private static readonly TOKEN_LENGTH = 32
   
   /**
@@ -353,7 +353,7 @@ export const validateAndSanitizeContent = (
     // First sanitize if it's an object
     if (typeof content === 'object' && content !== null) {
       const sanitizationResult = InputSanitizer.sanitizeObject(
-        content as Record<string, any>,
+        content as Record<string, unknown>,
         options
       )
       
