@@ -115,14 +115,24 @@ jobs:
           echo "📁 Contents of .next directory:"
           ls -la .next/ | head -10
 
+      - name: Clean cache before upload
+        run: |
+          echo "🧹 Cleaning cache directory before artifact upload..."
+          if [ -d ".next/cache" ]; then
+            rm -rf .next/cache
+            echo "✅ Removed .next/cache directory"
+          else
+            echo "ℹ️ .next/cache directory not found"
+          fi
+          echo "📁 Remaining .next contents:"
+          ls -la .next/ | head -10
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         if: success()
         with:
           name: build-files-${{ github.run_id }}
-          path: |
-            .next/
-            !.next/cache/
+          path: .next/
           retention-days: 7
           if-no-files-found: error
 
