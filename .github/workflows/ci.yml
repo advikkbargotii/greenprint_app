@@ -138,51 +138,34 @@ jobs:
           echo "📁 Remaining .next contents:"
           ls -la .next/
 
-      - name: Pre-upload verification
+      - name: Create tar archive for upload
         run: |
-          echo "🔍 Final verification before artifact upload..."
-          echo "Current working directory: $(pwd)"
-          echo "Checking if .next directory exists: $([ -d '.next' ] && echo 'YES' || echo 'NO')"
-          echo "Number of files in .next: $(find .next -type f 2>/dev/null | wc -l)"
-          echo "Size of .next directory: $(du -sh .next 2>/dev/null || echo 'Cannot calculate')"
-          echo "Absolute path to .next: $(realpath .next 2>/dev/null || echo 'Cannot resolve')"
-          echo "📁 Sample files in .next:"
-          find .next -type f | head -5
-          echo "🔄 Testing artifact path resolution..."
-          ls -la ".next/" || { echo "❌ Cannot list .next directory!"; exit 1; }
-
-      - name: Upload build artifacts (Primary)
-        id: upload_primary
-        uses: actions/upload-artifact@v4
-        continue-on-error: true
-        if: success()
-        with:
-          name: build-files-${{ github.run_id }}
-          path: .next/
-          retention-days: 7
-          if-no-files-found: warn
-
-      - name: Upload build artifacts (Fallback)
-        uses: actions/upload-artifact@v4
-        if: steps.upload_primary.outcome == 'failure'
-        with:
-          name: build-files-${{ github.run_id }}-fallback
-          path: |
-            .next/**/*
-            !.next/cache/**
-          retention-days: 7
-          if-no-files-found: error
-
-      - name: Verify artifact upload
-        run: |
-          if [[ "${{ steps.upload_primary.outcome }}" == "success" ]]; then
-            echo "✅ Primary artifact upload succeeded"
-          elif [[ "${{ steps.upload_primary.outcome }}" == "failure" ]]; then
-            echo "⚠️ Primary upload failed, but fallback should have worked"
-          else
-            echo "❌ Both upload methods failed"
+          echo "📦 Creating tar archive of .next directory..."
+          if [ ! -d ".next" ]; then
+            echo "❌ .next directory does not exist!"
             exit 1
           fi
+          
+          # Remove cache to reduce size
+          if [ -d ".next/cache" ]; then
+            rm -rf .next/cache
+            echo "🧹 Removed .next/cache"
+          fi
+          
+          # Create tar archive
+          tar -czf next-build.tar.gz .next/
+          echo "✅ Created next-build.tar.gz"
+          echo "📊 Archive size: $(du -sh next-build.tar.gz)"
+          echo "📁 Archive contents preview:"
+          tar -tzf next-build.tar.gz | head -10
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-files-${{ github.run_id }}
+          path: next-build.tar.gz
+          retention-days: 7
+          if-no-files-found: error
 
   performance:
     name: Performance Analysis
@@ -205,18 +188,24 @@ jobs:
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
-        continue-on-error: true
-        id: download_primary
         with:
           name: build-files-${{ github.run_id }}
           path: ./
 
-      - name: Download build artifacts (Fallback)
-        uses: actions/download-artifact@v4
-        if: steps.download_primary.outcome == 'failure'
-        with:
-          name: build-files-${{ github.run_id }}-fallback
-          path: ./
+      - name: Extract build artifacts
+        run: |
+          echo "📦 Extracting build artifacts..."
+          if [ -f "next-build.tar.gz" ]; then
+            tar -xzf next-build.tar.gz
+            echo "✅ Extracted .next directory from archive"
+            echo "📁 Extracted contents:"
+            ls -la .next/ | head -10
+          else
+            echo "❌ next-build.tar.gz not found!"
+            echo "Available files:"
+            ls -la
+            exit 1
+          fi
 
       - name: Verify downloaded artifacts
         run: |
@@ -335,18 +324,24 @@ jobs:
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
-        continue-on-error: true
-        id: download_primary_a11y
         with:
           name: build-files-${{ github.run_id }}
           path: ./
 
-      - name: Download build artifacts (Fallback)
-        uses: actions/download-artifact@v4
-        if: steps.download_primary_a11y.outcome == 'failure'
-        with:
-          name: build-files-${{ github.run_id }}-fallback
-          path: ./
+      - name: Extract build artifacts
+        run: |
+          echo "📦 Extracting build artifacts..."
+          if [ -f "next-build.tar.gz" ]; then
+            tar -xzf next-build.tar.gz
+            echo "✅ Extracted .next directory from archive"
+            echo "📁 Extracted contents:"
+            ls -la .next/ | head -10
+          else
+            echo "❌ next-build.tar.gz not found!"
+            echo "Available files:"
+            ls -la
+            exit 1
+          fi
 
       - name: Verify downloaded artifacts
         run: |
