@@ -1,41 +1,39 @@
 import { z } from 'zod'
+import { secureString, secureUrl } from './security'
 
 // Project validation schemas
 export const createProjectSchema = z.object({
-  name: z.string()
-    .min(1, 'String must contain at least 1 character(s)')
-    .max(100, 'String must contain at most 100 character(s)')
-    .trim(),
-  githubRepo: z.string()
-    .regex(/^[a-zA-Z0-9\-_.]+\/[a-zA-Z0-9\-_.]+$/, 'Invalid GitHub repository format (owner/repo)'),
-  vercelProjectId: z.string()
-    .min(1, 'Vercel project ID must not be empty')
+  name: secureString({ maxLength: 100 })
+    .refine(val => val.length >= 1, 'Project name is required')
+    .refine(val => val.length <= 100, 'Project name must be less than 100 characters'),
+  githubRepo: secureString({ maxLength: 255 })
+    .refine(val => /^[a-zA-Z0-9\-_.]+\/[a-zA-Z0-9\-_.]+$/.test(val), 'Invalid GitHub repository format (owner/repo)'),
+  vercelProjectId: secureString({ maxLength: 255 })
     .optional()
     .or(z.literal(''))
 })
 
 export const updateProjectSchema = z.object({
-  name: z.string()
-    .min(1, 'Project name is required')
-    .max(100, 'Project name must be less than 100 characters')
-    .trim()
+  name: secureString({ maxLength: 100 })
+    .refine(val => val.length >= 1, 'Project name is required')
+    .refine(val => val.length <= 100, 'Project name must be less than 100 characters')
     .optional(),
-  githubRepo: z.string()
-    .regex(/^[a-zA-Z0-9\-_.]+\/[a-zA-Z0-9\-_.]+$/, 'Invalid GitHub repository format (owner/repo)')
+  githubRepo: secureString({ maxLength: 255 })
+    .refine(val => /^[a-zA-Z0-9\-_.]+\/[a-zA-Z0-9\-_.]+$/.test(val), 'Invalid GitHub repository format (owner/repo)')
     .optional()
     .or(z.literal('')),
-  vercelProjectId: z.string()
-    .min(1, 'Vercel project ID must not be empty')
+  vercelProjectId: secureString({ maxLength: 255 })
     .optional()
     .or(z.literal(''))
 })
 
 // Emission data validation
 export const createEmissionSchema = z.object({
-  projectId: z.string().min(1, 'Project ID is required'),
+  projectId: secureString({ maxLength: 255 })
+    .refine(val => val.length >= 1, 'Project ID is required'),
   source: z.enum(['github', 'vercel', 'netlify', 'openai', 'gemini', 'other']),
-  co2kg: z.number().positive('CO2 emissions must be positive'),
-  metadata: z.record(z.unknown()).optional()
+  co2kg: z.number().positive('CO2 emissions must be positive').max(999999, 'CO2 emissions value too large'),
+  metadata: z.record(secureString({ maxLength: 1000 })).optional()
 })
 
 // Integration validation

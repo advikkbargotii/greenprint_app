@@ -22,6 +22,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@axe-core/react": "^4.10.2",
     "@clerk/nextjs": "^6.23.1",
     "@supabase/supabase-js": "^2.50.2",
     "lucide-react": "^0.525.0",

@@ -3,6 +3,7 @@
 // Import Clerk authentication components for user management
 // Clerk provides authentication, user management, and session handling
 import { SignInButton, useUser, UserButton } from '@clerk/nextjs'
+import { skipLinkData } from '@/lib/accessibility'
 
 /**
  * Props interface for the Navigation component
@@ -45,7 +46,11 @@ export default function Navigation({
   return (
     // Main navigation header - fixed to top of screen and spans full width
     // Uses semantic <header> element for accessibility and proper document structure
-    <header className="fixed top-0 left-0 w-full p-4 gp-z-nav" role="navigation" aria-label="Main navigation">
+    <header 
+      id={skipLinkData.navigation}
+      className="fixed top-0 left-0 w-full p-4 gp-z-nav" 
+      role="banner"
+    >
       {/* Navigation container with custom styling and background blur */}
       <div className="gp-nav-container overflow-hidden">
         {/* Inner flex container - spaces logo and navigation items */}

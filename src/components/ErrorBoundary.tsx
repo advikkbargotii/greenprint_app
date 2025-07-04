@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
+import { logReactError } from '@/lib/monitoring'
 
 interface Props {
   children: React.ReactNode
@@ -25,6 +26,9 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo)
+    
+    // Log to monitoring system
+    logReactError(error, { componentStack: errorInfo.componentStack })
   }
 
   render() {
