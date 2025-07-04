@@ -102,9 +102,18 @@ jobs:
 
       - name: Verify build artifacts exist
         run: |
-          echo "Checking build output..."
+          echo "🔍 Debugging build output location..."
+          echo "Current working directory: $(pwd)"
+          echo "Contents of current directory:"
+          ls -la
+          echo ""
+          echo "Looking for .next directory..."
+          find . -name ".next" -type d 2>/dev/null || echo "No .next directory found"
+          echo ""
           if [ ! -d ".next" ]; then
             echo "❌ Build failed: .next directory does not exist!"
+            echo "Full directory tree:"
+            find . -type d -name "*next*" 2>/dev/null || echo "No directories with 'next' in name found"
             exit 1
           fi
           if [ -z "$(ls -A .next 2>/dev/null)" ]; then
@@ -113,7 +122,9 @@ jobs:
           fi
           echo "✅ Build verification complete - .next directory exists with content"
           echo "📁 Contents of .next directory:"
-          ls -la .next/ | head -10
+          ls -la .next/
+          echo "📁 Full .next directory structure:"
+          find .next -type f | head -20
 
       - name: Clean cache before upload
         run: |
@@ -125,16 +136,53 @@ jobs:
             echo "ℹ️ .next/cache directory not found"
           fi
           echo "📁 Remaining .next contents:"
-          ls -la .next/ | head -10
+          ls -la .next/
 
-      - name: Upload build artifacts
+      - name: Pre-upload verification
+        run: |
+          echo "🔍 Final verification before artifact upload..."
+          echo "Current working directory: $(pwd)"
+          echo "Checking if .next directory exists: $([ -d '.next' ] && echo 'YES' || echo 'NO')"
+          echo "Number of files in .next: $(find .next -type f 2>/dev/null | wc -l)"
+          echo "Size of .next directory: $(du -sh .next 2>/dev/null || echo 'Cannot calculate')"
+          echo "Absolute path to .next: $(realpath .next 2>/dev/null || echo 'Cannot resolve')"
+          echo "📁 Sample files in .next:"
+          find .next -type f | head -5
+          echo "🔄 Testing artifact path resolution..."
+          ls -la ".next/" || { echo "❌ Cannot list .next directory!"; exit 1; }
+
+      - name: Upload build artifacts (Primary)
+        id: upload_primary
         uses: actions/upload-artifact@v4
+        continue-on-error: true
         if: success()
         with:
           name: build-files-${{ github.run_id }}
           path: .next/
           retention-days: 7
+          if-no-files-found: warn
+
+      - name: Upload build artifacts (Fallback)
+        uses: actions/upload-artifact@v4
+        if: steps.upload_primary.outcome == 'failure'
+        with:
+          name: build-files-${{ github.run_id }}-fallback
+          path: |
+            .next/**/*
+            !.next/cache/**
+          retention-days: 7
           if-no-files-found: error
+
+      - name: Verify artifact upload
+        run: |
+          if [[ "${{ steps.upload_primary.outcome }}" == "success" ]]; then
+            echo "✅ Primary artifact upload succeeded"
+          elif [[ "${{ steps.upload_primary.outcome }}" == "failure" ]]; then
+            echo "⚠️ Primary upload failed, but fallback should have worked"
+          else
+            echo "❌ Both upload methods failed"
+            exit 1
+          fi
 
   performance:
     name: Performance Analysis
@@ -157,8 +205,17 @@ jobs:
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
+        continue-on-error: true
+        id: download_primary
         with:
           name: build-files-${{ github.run_id }}
+          path: ./
+
+      - name: Download build artifacts (Fallback)
+        uses: actions/download-artifact@v4
+        if: steps.download_primary.outcome == 'failure'
+        with:
+          name: build-files-${{ github.run_id }}-fallback
           path: ./
 
       - name: Verify downloaded artifacts
@@ -278,8 +335,17 @@ jobs:
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
+        continue-on-error: true
+        id: download_primary_a11y
         with:
           name: build-files-${{ github.run_id }}
+          path: ./
+
+      - name: Download build artifacts (Fallback)
+        uses: actions/download-artifact@v4
+        if: steps.download_primary_a11y.outcome == 'failure'
+        with:
+          name: build-files-${{ github.run_id }}-fallback
           path: ./
 
       - name: Verify downloaded artifacts
