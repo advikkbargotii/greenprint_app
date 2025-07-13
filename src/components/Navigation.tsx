@@ -74,11 +74,11 @@ export default function Navigation({
                 {/* Dashboard Navigation Button */}
                 <button 
                   onClick={() => onNavigate('dashboard')}
-                  // Dynamic className - highlights current page, shows hover effects
-                  className={`gp-nav-button px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 ${
+                  // Use same styling as Get Started button with active state indication
+                  className={`gp-btn-primary gp-nav-button w-[120px] h-[34px] overflow-hidden transition-transform duration-200 hover:scale-110 active:scale-95 ${
                     currentPage === 'dashboard' 
-                      ? 'bg-green-600/80 text-white'  // Active page styling
-                      : 'text-white/80 hover:text-white hover:bg-white/10'  // Inactive page styling
+                      ? 'ring-2 ring-white/50'  // Active page indicator
+                      : ''
                   }`}
                   // Accessibility: Tell screen readers which page is current
                   aria-current={currentPage === 'dashboard' ? 'page' : undefined}
@@ -90,11 +90,11 @@ export default function Navigation({
                 {/* Integrations Navigation Button */}
                 <button 
                   onClick={() => onNavigate('integrations')}
-                  // Same dynamic styling pattern as Dashboard button
-                  className={`gp-nav-button px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 ${
+                  // Use same styling as Get Started button with active state indication
+                  className={`gp-btn-primary gp-nav-button w-[120px] h-[34px] overflow-hidden transition-transform duration-200 hover:scale-110 active:scale-95 ${
                     currentPage === 'integrations' 
-                      ? 'bg-green-600/80 text-white'  // Active page styling
-                      : 'text-white/80 hover:text-white hover:bg-white/10'  // Inactive page styling
+                      ? 'ring-2 ring-white/50'  // Active page indicator
+                      : ''
                   }`}
                   aria-current={currentPage === 'integrations' ? 'page' : undefined}
                   aria-label="Navigate to integrations"

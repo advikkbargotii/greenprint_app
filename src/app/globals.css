@@ -65,7 +65,7 @@
   /* --- BACKGROUND COLORS --- */
   /* Main app background - deep forest green (#051204) */
   /* Creates an environmental, nature-focused atmosphere */
-  --greenprint-bg-primary: rgba(5, 18, 4, 1);
+  --greenprint-bg-primary: rgba(0, 0, 0, 1);
   
   /* --- BRAND COLOR PALETTE --- */
   /* Primary brand green - bright, vibrant green for accents and highlights */
@@ -94,7 +94,7 @@
   
   /* --- INTERACTIVE ELEMENTS --- */
   /* Primary button background - muted green */
-  --greenprint-btn-primary-bg: rgba(93, 117, 80, 0.83);   /* Forest green, 83% opacity */
+  --greenprint-btn-primary-bg: rgba(93, 117, 80, 0.24);   
   
   /* --- TYPOGRAPHY SYSTEM --- */
   /* Font family - elegant serif font for premium feel */
@@ -120,15 +120,9 @@
    TAILWIND THEME CONFIGURATION
    ========================================
    
-   Inline theme configuration for Tailwind CSS.
-   Maps our custom fonts to Tailwind's utilities.
+   Note: Theme configuration moved to tailwind.config.js
+   for better compatibility and performance.
 */
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);  /* Geist Sans font for body text */
-  --font-mono: var(--font-geist-mono);  /* Geist Mono font for code */
-}
 
 /* ========================================
    DARK MODE SUPPORT
@@ -390,7 +384,7 @@ body {
 .gp-btn-primary {
   background-color: var(--greenprint-btn-primary-bg); /* Forest green background */
   color: white;                                        /* White text for contrast */
-  border: none;                                        /* Clean, borderless design */
+  border: 1px solid rgb(156, 154, 154);               /* 1px border with specified color */
   border-radius: 8px;                                  /* Rounded corners */
   cursor: pointer;                                     /* Indicate clickability */
 }
